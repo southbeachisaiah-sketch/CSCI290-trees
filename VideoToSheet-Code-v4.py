@@ -1,25 +1,11 @@
-''' -------------------- commets and into stuff---------------------------- '''
-'''
-## original authers ???????,????????,???????
-## re-written and commeted by Isaiah R Wilson for improved clarity and speed.
-## ChatGPT was used to help understand original code
+''' -------------------- commets and into stuff----------------------------
 
-## major changes
-## 1. changed from FFT for each pixal to all at once. 
-##      its about a 99% speed reduction in FFT part
-## 2. passed capture thought getdata so that the video file is not opened 2 times
-##      on a simple test run went from 11.6 seconds to 11 seconds
-## 3. potentually change the kMeans algorithm to MiniBatchKMeans from K-Means
-##      https://scikit-learn.org/stable/auto_examples/cluster/plot_mini_batch_kmeans.html
-##      in a simple test its a 18.38 seconds -> 2.397 seconds reduction 87% reduction
-## 4. change the frames_array to float 32 instead of 64
-##      this changes speed of hole program from 10.9 seconds to 10.3 seconds
-##      currently disabled b/c does not seem to improve speed by much
-##
-## 5. set up global vars at top of file
-## 6. Removed var FR that was passed throught all the Fn and made it a global var (framerate)
-## 7. renamed varius vars to make them more explicilt labled :p
-## 8. changed how cluster ordering and picking works
+authers 
+SP25: ???????,????????,Tim Price
+FA25: Isaiah Wilson, Tim Price
+SP26: Isaiah Wilson, ???????,????????
+
+
 
 
 ## ideas that may help
@@ -45,6 +31,7 @@ move the commet out on longer runs to global vars
 
 make adgasentcy matrix for distance between each node, with the distrance between them
 as the one or 0
+
 
 '''
 ''' ------------------------- imports ------------------------------------- '''
@@ -92,31 +79,11 @@ chunk_index = 0
 # Directory where this script is located
 script_dir = os.path.dirname(os.path.abspath(__file__))
 
-# gets all folders that start with "run" (Written with GPT 5)
+# gets all folders that start with "run" adjasent to this file
 run_folders = [
     name for name in os.listdir(script_dir)
     if os.path.isdir(os.path.join(script_dir, name)) and name.lower().startswith("run")
 ]
-
-
-# this is the path to where the treevideos is
-#folderPathTooTreeVids = ".\\treeVidTest"
-#folderPathTooTreeVids = r"E:\OneDrive - FVCC\ForestCharacterization\LongVideo\Speaker"
-#folderPathTooTreeVids = r"K:\class\24_FA\CSCI_290_01\shared\NewCamera\SDCard"
-#folderPathTooTreeVids = r"K:\class\24_FA\CSCI_290_01\shared\NewCamera\SDCard\GreenAshe"
-#folderPathTooTreeVids = r"K:\class\24_FA\CSCI_290_01\shared\NewCamera\SDCard\Maple"
-#folderPathTooTreeVids = r"K:\class\24_FA\CSCI_290_01\shared\NewCamera\SDCard\MapleRed"
-#folderPathTooTreeVids = r"K:\class\24_FA\CSCI_290_01\shared\NewCamera\SDCard\MtAshe"
-#folderPathTooTreeVids = r"K:\class\24_FA\CSCI_290_01\shared\NewCamera\SDCard\Willow"
-#folderPathTooTreeVids = r"K:\class\24_FA\CSCI_290_01\shared\._Final_Organization\LongVideos\LongDry\MtAshe"
-#folderPathTooTreeVids = r"E:\OneDrive - FVCC\ForestCharacterization\LongVideo\Trees"
-#folderPathTooTreeVids = r"E:\TreeData\LongVideos\"
-#folderPathTooTreeVids = r"K:\class\25_SP\CSCI_290_01\shared\EvergreenSorted\DougFir"
-
-# gets all files in folder
-#files = os.listdir(folderPathTooTreeVids)
-#filesNAMES = []
-
 
 
 ''' --------------------------- functions  -------------------------------- '''
@@ -187,31 +154,6 @@ def process(frames_array, output_file, output_file_All):
         # here pixelNum is a single number but it runs thought all pixels so its max value is X*Y
     dataPrimedForKMeans = dataFFTed.reshape(dataFFTed.shape[0], -1).T # alternate...
 
-    '''test
-    # == NEW SECTION: generate and save adjacency (distance) matrix, one row at a time
-    print(f"== Generating adjacency matrix for chunk {chunk_index} ...")
-    data_for_dist = dataPrimedForKMeans
-
-    # == Optional: sample only part of the pixels to keep memory low (uncomment if needed)
-    # if data_for_dist.shape[0] > 1000:
-    #     idx = np.random.choice(data_for_dist.shape[0], 1000, replace=False)
-    #     data_for_dist = data_for_dist[idx, :]
-
-    # == Open CSV file for streaming write
-    out_path = f"chunk_{chunk_index}_adjacency.csv"
-    with open(out_path, 'w') as f:
-        for i in range(data_for_dist.shape[0]):
-            # == Compute distances from pixel i to all others
-            dists = np.linalg.norm(data_for_dist - data_for_dist[i], axis=1)
-            # == Save as comma-separated line
-            np.savetxt(f, [dists], delimiter=',', fmt='%.4f')
-            # == Optional progress display
-            if i % 100 == 0:
-                print(f"   Row {i}/{data_for_dist.shape[0]} done...")
-                logTime("code line: 193")
-    print(f"== Saved adjacency matrix: {out_path}")
-    # == END NEW SECTION
-    test'''
 
 
         # this just choses the kmeans algorithm, kmeans is likely better but minibatch is faster
@@ -312,7 +254,7 @@ def fileProssesing(file, output_file, output_file_All):
 # Main execution
 
 
-# this is the txtDoc that records notes (Written with GPT 5)
+# this is the txtDoc that records notes
 # Create the log file name
 notesFileName = f"{testNameRunNumber}-Notes.md"
 
@@ -329,30 +271,7 @@ def logNote(text):
 
 
 
-
-''' OLD MAIN
-for file_name in files:
-    file_path = os.path.join(folderPathTooTreeVids, file_name)
-    ##logNote(file_name)
-    
-    if os.path.isfile(file_path):
-        filesNAMES.append(file_path)
-
-for file in filesNAMES:
-    print(file)
-    if file[-3:] != "MOV" and file[-3:] != "MP4":
-        print("wrong File Type: " + file)
-        continue
-    #print(file)
-    output_file = outPutFileName + ".csv"
-    #output_file = file[:-4]+".csv"  # File to save spectra
-    #output_file = folderPathTooTreeVids[51:]+".csv"  # File to save spectra
-    #print(output_file)
-    fileProssesing(file, output_file)
-print("Completed............")
-'''
-
-## new MAIN (Written with heavy aid from GPT 5)
+## new MAIN
 # --------------------------------------------------------------------
 # Process each run folder
 # --------------------------------------------------------------------
