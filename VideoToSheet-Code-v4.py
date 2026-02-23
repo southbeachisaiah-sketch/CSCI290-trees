@@ -16,7 +16,7 @@ sortedCenters = sorted(centers, key=lambda c: c.mean(), reverse=True)
 
 3. try different windowing algorithms
 
-4. when you find the centers, also find varrence from that center this may reveal somthing interesting
+4. when you find the centers, also find varrence from this center this may reveal somthing interesting
     this would be very useful in determining the right number of clusters
     poke around untill you find a number that gets the differnet clusters but is not deviding oveous clusters
 
@@ -46,6 +46,7 @@ from scipy.spatial.distance import cdist # for node testing
 import subprocess
 import sys
 import csv
+import re
 
 
 ''' ------------------------- global vars  -------------------------------- '''
@@ -55,15 +56,17 @@ os.environ['LOKY_MAX_CPU_COUNT'] = '20' # limit to CPU cores
 
 # this will be the name of the output.csv file
 testNameRunNumber = "test29NewOldFFT"
-treeSpecies = "Oak"  # You'll need to set this per run or pass as parameter
 pythonFileName = os.path.basename(__file__)
+
+# List of valid tree species for auto-detection
+VALID_SPECIES = ["DougFir", "Larch", "LodgePole", "Ponderosa", "Spruce"]
+defaultTreeSpecies = "SpeciesNotSpecified"  # Fallback if no species found in folder name
 
 ## stadard vars
 frameRate = 30;
-framesPerChunk = 256 # Number of frames per chunk
-chunkStepSize = 256  # Number of frames to advance between chunks (set this to framesPerChunk for non-overlapping, half for 2x chunks)
+framesPerChunk = 32 # Number of frames per chunk
+chunkStepSize = 16  # Number of frames to advance between chunks (set this to framesPerChunk for non-overlapping, half for 2x chunks)
 framesToDropAtBeginingOfVid = 60
-
 n_clusters = 8  # Number of clusters (side note increasing this increases y values on graph)
 
 kMeansAlgorithm = "MiniBatch" 
@@ -97,6 +100,17 @@ run_folders = [
 
 
 ''' --------------------------- functions  -------------------------------- '''
+
+def detect_species_from_folder(folder_name):
+    """
+    Detect tree species from folder name by checking against VALID_SPECIES list.
+    Returns the species if found, otherwise returns defaultTreeSpecies.
+    """
+    folder_lower = folder_name.lower()
+    for species in VALID_SPECIES:
+        if species.lower() in folder_lower:
+            return species
+    return defaultTreeSpecies
 
     # this function makes a clean way to consle log time
     # the place name is so you can do "line of code number"
@@ -144,7 +158,7 @@ def getdata(file, start_frame):
 
     # this is the main function that does the prossesing of thr clips
     # frames_array is an array where each item in the array is a series of 256 frames
-def process(frames_array, output_file, start_frame, end_frame, video_name):
+def process(frames_array, output_file, start_frame, end_frame, video_name, tree_species):
     
         # This exits "process" if there was no input or if the array had 0 frames
     if frames_array is None or frames_array.size ==0: return 
@@ -184,7 +198,7 @@ def process(frames_array, output_file, start_frame, end_frame, video_name):
         # Prepare metadata row (20 columns)
     metadata = [
         testNameRunNumber,           # Test number
-        treeSpecies,                 # Tree species
+        tree_species,                 # Tree species (now passed as parameter)
         pythonFileName,              # Python file name
         video_name,                  # Video name
         f"{start_frame}:{end_frame}", # Frame range
@@ -242,7 +256,7 @@ def process(frames_array, output_file, start_frame, end_frame, video_name):
 
 
 
-def fileProssesing(file, output_file, output_file_All):
+def fileProssesing(file, output_file, output_file_All, tree_species):
     
     ## creates the object that has the video info
     capture = cv2.VideoCapture(file)
@@ -266,9 +280,9 @@ def fileProssesing(file, output_file, output_file_All):
     
         end_frame = start_frame + frames_array.shape[0] - 1
     
-        # payload
-        process(frames_array, output_file, start_frame, end_frame, video_name)
-        process(frames_array, output_file_All, start_frame, end_frame, video_name)
+        # payload - now passing tree_species
+        process(frames_array, output_file, start_frame, end_frame, video_name, tree_species)
+        process(frames_array, output_file_All, start_frame, end_frame, video_name, tree_species)
         
         
         count +=1
@@ -293,7 +307,8 @@ with open(notesFileName, 'w') as f:
     f.write("=" * 50 + "\n\n")
     f.write(f"Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
     f.write(f"Python File: {pythonFileName}\n")
-    f.write(f"Tree Species: {treeSpecies}\n")
+    f.write(f"Valid Species: {', '.join(VALID_SPECIES)}\n")
+    f.write(f"Default Species: {defaultTreeSpecies}\n")
     f.write(f"Frames per chunk: {framesPerChunk}\n")
     f.write(f"Chunk step size: {chunkStepSize}\n")
     f.write(f"Number of clusters: {n_clusters}\n")
@@ -317,6 +332,7 @@ print("Found run folders:", run_folders)
 print(f"Output directory: {output_dir}")
 print(f"Chunk configuration: {framesPerChunk} frames per chunk, stepping by {chunkStepSize} frames")
 print(f"This will create approximately {framesPerChunk/chunkStepSize:.1f}x more chunks than non-overlapping")
+print(f"Valid tree species for auto-detection: {VALID_SPECIES}")
 
 
 # Initialize the combined All file with a header
@@ -334,9 +350,11 @@ if not os.path.exists(combined_all_file):
 
 chunkIncramentor = 0;
 for folder in run_folders:
-
     
-    logNote(folder + "   Started  " + str(chunkIncramentor)+ " ")
+    # Detect tree species from folder name
+    tree_species = detect_species_from_folder(folder)
+    
+    logNote(f"{folder}   Started  {str(chunkIncramentor)}  [Species: {tree_species}]")
     folder_path = os.path.join(script_dir, folder)
 
     # Output CSV names in the new directory
@@ -366,17 +384,17 @@ for folder in run_folders:
             else:
                 print("Skipping wrong file type:", file_path)
 
-    print(f"\n=== Processing folder: {folder} ===")
+    print(f"\n=== Processing folder: {folder} [Species: {tree_species}] ===")
     print("Files:", filesNAMES)
 
     # Run your processing on each file
     for file in filesNAMES:
         chunkIncramentor = chunkIncramentor + 1
-        logNote("  " + str(chunkIncramentor) + "  file: "+ file +"     folder: " + folder)
-        print(f"Processing file: {file}")
-        fileProssesing(file, output_file, output_file_All)
+        logNote(f"  {str(chunkIncramentor)}  file: {file}     folder: {folder} [Species: {tree_species}]")
+        print(f"Processing file: {file} [Species: {tree_species}]")
+        fileProssesing(file, output_file, output_file_All, tree_species)
         
-    logNote(folder + "   ENDED  " + str(chunkIncramentor)+ " ")
+    logNote(f"{folder}   ENDED  {str(chunkIncramentor)}  [Species: {tree_species}]")
 
 print("\nALL RUN FOLDERS COMPLETED.")
 print(f"Output files saved in: {output_dir}")
